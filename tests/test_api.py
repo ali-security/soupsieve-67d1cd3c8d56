@@ -590,6 +590,71 @@ class TestInvalid(util.TestCase):
         with self.assertRaises(TypeError):
             sv.filter('div', "not a tag", flags=flags)
 
+    def test_excessive_selectors(self):
+        """Test excessive selectors."""
+
+        # Build a large selector string: "a,a,a,...,a"
+        count = 10000
+        selector = ",".join("a" for _ in range(count))
+
+        # Compile the selector
+        with self.assertRaises(ValueError):
+            sv.compile(selector)
+
+    def test_excessive_custom_selectors(self):
+        """Test excessive custom selectors."""
+
+        # Build a large selector string: "a,a,a,...,a"
+        count = 10000
+        selector = ",".join("a" for _ in range(count))
+
+        # Compile the selector
+        with self.assertRaises(ValueError):
+            sv.compile('div:--custom', custom={':--custom': selector})
+
+    def test_excessive_custom_and_normal_selectors(self):
+        """Test excessive custom and normal selectors."""
+
+        count = 5000
+        selector = ",".join("a" for _ in range(count))
+
+        # Compile the selector
+        with self.assertRaises(ValueError):
+            sv.compile(':is({}):--custom'.format(selector), custom={':--custom': selector})
+
+    def test_excessive_repeated_custom_selectors(self):
+        """Test excessive selectors from repeatedly referencing a custom selector."""
+
+        count = 100
+        selector = ",".join("a" for _ in range(count))
+        pattern = ",".join(":--custom" for _ in range(count))
+
+        # Compile the selector
+        with self.assertRaises(ValueError):
+            sv.compile(pattern, custom={':--custom': selector})
+
+    def test_excessive_selectors_select(self):
+        """Test excessive selectors through the select API."""
+
+        count = 10000
+        selector = ",".join("a" for _ in range(count))
+        soup = self.soup('<div><a></a></div>', 'html.parser')
+
+        with self.assertRaises(ValueError):
+            sv.select(selector, soup)
+
+        with self.assertRaises(ValueError):
+            sv.select_one(selector, soup)
+
+    def test_selectors_under_limit(self):
+        """Test that a selector list under the limit still compiles and matches."""
+
+        count = 1000
+        selector = ",".join("a" for _ in range(count))
+        soup = self.soup('<div><a id="1"></a></div>', 'html.parser')
+
+        self.assertEqual([el['id'] for el in sv.select(selector, soup)], ['1'])
+
 
 class TestSyntaxErrorReporting(util.TestCase):
     """Test reporting of syntax errors."""
